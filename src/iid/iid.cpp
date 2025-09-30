@@ -84,6 +84,12 @@ IidResult iidTestSuite(EntropyInputData& data) {
     if (result.H_original > 0.0) h_assessed = std::min(h_assessed, result.H_original);
     result.min_entropy = h_assessed;
 
+    result.passed = (
+        result.chi_square.passed &&
+        result.lrs.passed &&
+        result.permutation.passed
+    );
+
     return result;
 }
 

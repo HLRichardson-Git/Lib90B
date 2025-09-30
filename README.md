@@ -2,12 +2,13 @@
 
 Lib90B is a C++ library for estimating the entropy of data sources, derived from the [SP800-90B_EntropyAssessment](https://github.com/usnistgov/SP800-90B_EntropyAssessment) project by NIST. It implements statistical methods for assessing min-entropy as described in [NIST SP 800-90B](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-90B.pdf). 
 
-Lib90B currently, only offers the non-IID tests, including min-entropy calculations, chi-square tests, permutation tests, longest repeated substring tests, t-tuple tests, and more. Implementation of IID and Restart tests is in progress.
+Lib90B currently, only offers the non-IID & IID test suites. Refactors of Restart and other tests are in progress.
 
 ## Features
 
 - Non-IID min-entropy estimation suite  
-- Individual statistical tests: Most Common, Collision, Markov, Compression, LRS, t-Tuple, Multi-MCW, Lag, Multi-MMC, LZ78Y  
+- IID test suite
+- Individual statistical tests: Most Common, Collision, Markov, Compression, LRS, t-Tuple, Multi-MCW, Lag, Multi-MMC, LZ78Y , Len_LRS, Chi Square, Permutation
 - Support for 8-bit and arbitrary-width symbols  
 - Optional unit tests via GoogleTest  
 
@@ -81,6 +82,22 @@ int main() {
         std::cout << "H_original: " << results.H_original.value() << std::endl;
     if (results.min_entropy.has_value())
         std::cout << "Min entropy: " << results.min_entropy.value() << std::endl;
+
+    return 0;
+}
+```
+
+Running the full ID test suite
+
+```cpp
+#include <lib90b/iid.h>
+#include <iostream>
+
+int main() {
+    lib90b::IidResult results = lib90b::iidTestSuite("path/to/data.bin");
+
+    if (results.passed)
+        std::cout << "IID Test Passed." << std::endl;
 
     return 0;
 }

@@ -26,4 +26,7 @@ TEST(IidTestSuite, NormalBinEntropy) {
     EXPECT_TRUE(results.chi_square.passed) << "Chi-square test failed.";
     EXPECT_TRUE(results.lrs.passed) << "Longest repeated substring test failed.";
     EXPECT_TRUE(results.permutation.passed) << "Permutation test failed.";
+
+    // Check the tests overall passed
+    EXPECT_TRUE(results.passed) << "The IID Test suite failed atleast one test";
 }

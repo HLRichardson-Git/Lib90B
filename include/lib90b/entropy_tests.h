@@ -159,6 +159,8 @@ struct IidResult {
     ChiSquareResult chi_square;
     lenLrsResult lrs;
     PermutationTestResult permutation;
+
+    bool passed = false;
 };
 
 } // namespace lib90b
