@@ -28,41 +28,37 @@
 
 namespace lib90b {
 
-NonIidResult nonIidTestSuite(const std::filesystem::path& filepath) {
+NonIidResult nonIidTestSuite(EntropyInputData& data) {
     NonIidResult result;
-    result.filename = filepath;
-
-    // Load data
-    std::ifstream file(filepath, std::ios::binary);
-    if (!file) {
-        throw std::runtime_error("Failed to open file: " + filepath.string());
-    }
-    std::vector<uint8_t> buffer((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    EntropyInputData data{ buffer, 8 };
     result.word_size = data.word_size;
-    std::unordered_set<uint8_t> unique_symbols(buffer.begin(), buffer.end());
-    data.alph_size = unique_symbols.size();
 
-    // Limit concurrency to avoid resource exhaustion
+    // Track alphabet size if not set
+    if (data.alph_size == 0) {
+        std::unordered_set<uint8_t> unique_symbols(data.symbols.begin(), data.symbols.end());
+        data.alph_size = unique_symbols.size();
+    } else {
+        data.alph_size = data.alph_size;
+    }
+
+    // Limit concurrency
     const size_t max_concurrent = std::min(4u, std::thread::hardware_concurrency());
     auto sem = std::make_shared<std::counting_semaphore<10>>(max_concurrent);
 
-    // Create a safe wrapper for async execution
     auto safe_async = [sem](auto&& func, const EntropyInputData& data_copy) {
         return std::async(std::launch::async, [sem, func, data_copy]() {
-            sem->acquire(); // Acquire semaphore
+            sem->acquire();
             try {
-                auto result = func(data_copy);
-                sem->release(); // Release semaphore
-                return result;
+                auto res = func(data_copy);
+                sem->release();
+                return res;
             } catch (...) {
-                sem->release(); // Make sure to release on exception
-                throw; // Re-throw to be caught by safe_get
+                sem->release();
+                throw;
             }
         });
     };
 
-    // Launch tests with data copies to avoid races
+    // Launch tests
     auto fut_compression = safe_async([](const auto& d) { return compressionTest(d); }, data);
     auto fut_lz78y       = safe_async([](const auto& d) { return lz78yTest(d); }, data);
     auto fut_multi_mmc   = safe_async([](const auto& d) { return multiMmcTest(d); }, data);
@@ -74,7 +70,7 @@ NonIidResult nonIidTestSuite(const std::filesystem::path& filepath) {
     auto fut_most_common = safe_async([](const auto& d) { return mostCommonTest(d); }, data);
     auto fut_collision   = safe_async([](const auto& d) { return collisionTest(d); }, data);
 
-    // Collect Original results
+    // Collect results
     result.compression = fut_compression.get();
     result.lz78y       = fut_lz78y.get();
     result.multi_mmc   = fut_multi_mmc.get();
@@ -86,7 +82,7 @@ NonIidResult nonIidTestSuite(const std::filesystem::path& filepath) {
     result.most_common = fut_most_common.get();
     result.collision   = fut_collision.get();
 
-    // If symbols are not binary, run tests in bitstring mode which converts the data to bits before testing
+    // Run bitstring versions if necessary
     if (data.alph_size > 2) {
         auto fut_lz78y_bit       = safe_async([](const auto& d) { return lz78yTest(d, SymbolMode::Bitstring); }, data);
         auto fut_multi_mmc_bit   = safe_async([](const auto& d) { return multiMmcTest(d, SymbolMode::Bitstring); }, data);
@@ -96,7 +92,6 @@ NonIidResult nonIidTestSuite(const std::filesystem::path& filepath) {
         auto fut_t_tuple_bit     = safe_async([](const auto& d) { return tTupleTest(d, SymbolMode::Bitstring); }, data);
         auto fut_most_common_bit = safe_async([](const auto& d) { return mostCommonTest(d, SymbolMode::Bitstring); }, data);
 
-        // Patch h_bitstring if available
         auto patch = [](auto &orig, auto &fut) {
             auto bit_res = fut.get();
             if (bit_res.h_bitstring.has_value())
@@ -112,12 +107,8 @@ NonIidResult nonIidTestSuite(const std::filesystem::path& filepath) {
         patch(result.most_common, fut_most_common_bit);
     }
 
-    // Compute min entropy
-    std::optional<double> H_original = std::nullopt;
-    std::optional<double> H_bitstring = std::nullopt;
-
     // Compute H_bitstring
-    H_bitstring = std::min({
+    result.H_bitstring = std::min({
         result.most_common.h_bitstring.value_or(1.0),
         result.collision.h_bitstring.value_or(1.0),
         result.markov.h_bitstring.value_or(1.0),
@@ -131,7 +122,7 @@ NonIidResult nonIidTestSuite(const std::filesystem::path& filepath) {
     });
 
     // Compute H_original
-    H_original = std::min({
+    result.H_original = std::min({
         result.most_common.h_original.value_or((double)data.word_size),
         result.collision.h_original.value_or((double)data.word_size),
         result.markov.h_original.value_or((double)data.word_size),
@@ -144,15 +135,28 @@ NonIidResult nonIidTestSuite(const std::filesystem::path& filepath) {
         result.lz78y.h_original.value_or((double)data.word_size)
     });
 
-    result.H_bitstring = H_bitstring;
-    result.H_original = H_original;
-
     // Compute overall min_entropy
     double h_assessed = data.word_size;
-    if (H_bitstring.has_value()) h_assessed = std::min(h_assessed, H_bitstring.value() * data.word_size);
-    if (H_original.has_value()) h_assessed = std::min(h_assessed, H_original.value());
+    if (result.H_bitstring.has_value()) h_assessed = std::min(h_assessed, result.H_bitstring.value() * data.word_size);
+    if (result.H_original.has_value()) h_assessed = std::min(h_assessed, result.H_original.value());
     result.min_entropy = h_assessed;
 
+    return result;
+}
+
+NonIidResult nonIidTestSuite(const std::filesystem::path& filepath) {
+    std::ifstream file(filepath, std::ios::binary);
+    if (!file) {
+        throw std::runtime_error("Failed to open file: " + filepath.string());
+    }
+
+    std::vector<uint8_t> buffer(
+        (std::istreambuf_iterator<char>(file)),
+        std::istreambuf_iterator<char>());
+
+    EntropyInputData data{ buffer, 8 };
+    NonIidResult result = nonIidTestSuite(data);
+    result.filename = filepath;
     return result;
 }
 

@@ -7,13 +7,6 @@ option(Lib90B_BUILD_TESTS "Build unit tests" ON)
 
 include(FetchContent)
 
-FetchContent_Declare(
-  jsoncpp
-  URL https://github.com/open-source-parsers/jsoncpp/archive/refs/tags/1.9.5.zip
-)
-
-FetchContent_MakeAvailable(jsoncpp)
-
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build static libraries" FORCE)
 set(BUILD_DIVSUFSORT64 ON CACHE BOOL "Enable 64-bit suffix array support" FORCE)
 
@@ -23,6 +16,14 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(divsufsort)
+
+# Fetch bzip2
+FetchContent_Declare(
+    bzip2
+    URL https://github.com/libarchive/bzip2/archive/refs/tags/bzip2-1.0.8.zip
+)
+
+FetchContent_MakeAvailable(bzip2)
 
 include_directories(
     ${PROJECT_SOURCE_DIR}/include
@@ -38,6 +39,13 @@ set (NON_IID_SOURCES
     src/non_iid/multi_mmc.cpp
     src/non_iid/t_tuple.cpp
     src/non_iid/non_iid.cpp
+)
+
+set (IID_SOURCES
+    src/iid/calc_stats.cpp
+    src/iid/chi_square.cpp
+    src/iid/permutation.cpp
+    src/iid/iid.cpp
 )
 
 set (SHARED_SOURCES
@@ -57,10 +65,24 @@ set (GESTALT_SOURCES
 
 add_library (${PROJECT_NAME} STATIC 
     ${NON_IID_SOURCES}
+    ${IID_SOURCES}
     ${SHARED_SOURCES}
     ${UTIL_SOURCES}
     ${GESTALT_SOURCES}
 )
+
+add_library(bzip2_lib STATIC
+    ${bzip2_SOURCE_DIR}/blocksort.c
+    ${bzip2_SOURCE_DIR}/bzlib.c
+    ${bzip2_SOURCE_DIR}/compress.c
+    ${bzip2_SOURCE_DIR}/crctable.c
+    ${bzip2_SOURCE_DIR}/decompress.c
+    ${bzip2_SOURCE_DIR}/huffman.c
+    ${bzip2_SOURCE_DIR}/randtable.c
+)
+
+target_include_directories(bzip2_lib PUBLIC ${bzip2_SOURCE_DIR})
+target_compile_definitions(bzip2_lib PUBLIC BZ_HAVE_BZBUFFTOBUFF)
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE
@@ -70,13 +92,14 @@ target_include_directories(${PROJECT_NAME}
     PUBLIC
         ${PROJECT_SOURCE_DIR}/include
         ${divsufsort_BINARY_DIR}/include
+        ${bzip2_SOURCE_DIR}
 )
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-        #jsoncpp_lib 
         divsufsort
         divsufsort64
+        bzip2_lib
 )
 
 # Enable testing and include GoogleTest if Lib90B_BUILD_TESTS is ON

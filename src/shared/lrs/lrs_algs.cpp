@@ -438,3 +438,40 @@ InternalLrsResult SAalgs(const uint8_t text[], long n, int k) {
         return SAalgs64(text, n, k);
 	}
 }
+
+// Helper function to calculate collision proportion
+void calc_collision_proportion(const std::vector<double> &p, long double &p_col) {
+    p_col = 0.0L;
+    for (size_t i = 0; i < p.size(); i++) {
+        p_col += powl((long double)(p[i]), 2.0L);
+    }
+}
+
+// Helper to get the length of the LRS
+long int len_LRS32(const uint8_t text[], int sample_size) {
+    std::vector<saidx_t> sa(sample_size + 1, -1);
+    std::vector<saidx_t> lcp(sample_size + 1, -1);
+    saidx_t lrs_len = -1;
+
+    calcSALCP32(text, sample_size, sa, lcp);
+
+    for (saidx_t j = 0; j <= sample_size; j++) {
+        if (lcp[j] > lrs_len) lrs_len = lcp[j];
+    }
+
+    return lrs_len;
+}
+
+long int len_LRS64(const uint8_t text[], int sample_size) {
+    std::vector<saidx64_t> sa(sample_size + 1, -1);
+    std::vector<saidx64_t> lcp(sample_size + 1, -1);
+    saidx64_t lrs_len = -1;
+
+    calcSALCP64(text, sample_size, sa, lcp);
+
+    for (saidx64_t j = 0; j <= sample_size; j++) {
+        if (lcp[j] > lrs_len) lrs_len = lcp[j];
+    }
+
+    return lrs_len;
+}

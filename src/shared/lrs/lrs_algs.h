@@ -19,3 +19,10 @@ struct InternalLrsResult {
 };
 
 InternalLrsResult SAalgs(const uint8_t text[], long n, int k);
+
+#define SAINDEX_MAX INT32_MAX
+#define SAINDEX64_MAX INT64_MAX
+
+void calc_collision_proportion(const std::vector<double> &p, long double &p_col);
+long int len_LRS32(const uint8_t text[], int sample_size);
+long int len_LRS64(const uint8_t text[], int sample_size);

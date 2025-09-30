@@ -353,11 +353,11 @@ void free_data(data_t *dp){
 /*This implementation is derived from David Blackman and Sebastiano Vigna, which they placed into
 the public domain. See http://xoshiro.di.unimi.it/xoshiro256starstar.c
 */
-static inline uint64_t rotl(const uint64_t x, int k) {
+uint64_t rotl(const uint64_t x, int k) {
 	return (x << k) | (x >> (64 - k));
 }
 
-static inline uint64_t xoshiro256starstar(uint64_t *xoshiro256starstarState)
+uint64_t xoshiro256starstar(uint64_t *xoshiro256starstarState)
 {
 	const uint64_t result_starstar = rotl(xoshiro256starstarState[1] * 5, 7) * 9;
 	const uint64_t t = xoshiro256starstarState[1] << 17;
@@ -406,24 +406,26 @@ void xoshiro_jump(unsigned int jump_count, uint64_t *xoshiro256starstarState) {
 //This seeds using an external source
 //We use /dev/urandom here. 
 //We could alternately use the RdRand (or some other OS or HW source of pseudo-random numbers)
-void seed(uint64_t *xoshiro256starstarState){
-	FILE *infp;
+void seed(uint64_t seedArray[4]) {
+    uint8_t buffer[32];
+#ifdef _WIN32
+    //get_random_bytes(buffer, 32);
+#else
+    FILE *fp = fopen("/dev/urandom", "rb");
+    if (!fp) {
+        std::cerr << "Can't open random source. Reverting to a deterministic seed.\n";
+        buffer[0] = 1; // fallback
+    } else {
+        fread(buffer, 1, 32, fp);
+        fclose(fp);
+    }
+#endif
 
-	if((infp=fopen("/dev/urandom", "rb"))==NULL) {
-		perror("Can't open random source. Reverting to a deterministic seed.");
-		exit(-1);
-	} 
-
-	if(fread(xoshiro256starstarState, sizeof(uint64_t), 4, infp)!=4) {
-		perror("Can't read random seed");
-		exit(-1);
-	}
-
-	if(fclose(infp)!=0) {
-		perror("Couldn't close random source");
-		exit(-1);
-	}
+    for (int i = 0; i < 4; i++) {
+        seedArray[i] = ((uint64_t*)buffer)[i];
+    }
 }
+
 
 /*Return an integer in the range [0, high], without modular bias*/
 /*This is a slight modification of Lemire's approach (as we want [0,s] rather than [0,s)*/
@@ -440,7 +442,7 @@ void seed(uint64_t *xoshiro256starstarState){
   * This approach allows us to avoid _any_ modular reductions with high probability, and at worst case one
   * reduction. It's an opaque approach, but lovely.
   */
-uint64_t randomRange64(uint64_t s, uint64_t *xoshiro256starstarState){
+uint64_t randomRange64(uint64_t s, uint64_t *xoshiro256starstarState) {
 	uint64_t x;
 	uint128_t m;
 	uint64_t l;
@@ -515,7 +517,7 @@ int sum(const array<int, LENGTH> &arr) {
 }
 
 // Quick sum vector
-template<typename T>
+/*template<typename T>
 T sum(const vector<T> &v) {
 	T sum = 0;
 	for (unsigned long int i = 0; i < v.size(); ++i) {
@@ -523,35 +525,7 @@ T sum(const vector<T> &v) {
 	}
 
 	return sum;
-}
-
-// Calculate baseline statistics
-// Finds mean, median, and whether or not the data is binary
-void calc_stats(const data_t *dp, double &rawmean, double &median) {
-
-	// Calculate mean
-	rawmean = sum(dp->rawsymbols, dp->len) / (double)dp->len;
-
-	// Sort in a vector for median/min/max
-	vector<uint8_t> v(dp->symbols, dp->symbols + dp->len);
-	sort(v.begin(), v.end());
-
-	long int half = dp->len / 2;
-	if(dp->alph_size == 2) {
-		//This isn't necessarily true, but we are supposed to set it this way.
-		//See 5.1.5, 5.1.6.
-		median = 0.5;
-	} else {
-		if((dp->len & 1) == 1) {
-			//the length is odd
-			median = v[half];
-		} else {
-			//the length is even
-			median = (v[half] + v[half - 1]) / 2.0;
-		}
-	}
-}
-
+}*/
 
 // Map initialization for integers
 void map_init(map<uint8_t, int> &m) {
@@ -577,10 +551,12 @@ void map_init(map<pair<uint8_t, uint8_t>, int> &m) {
 }
 
 // Calculates proportions of each value as an index
-void calc_proportions(const uint8_t data[], vector<double> &p, const int sample_size) {
-	for (int i = 0; i < sample_size; i++) {
-		p[data[i]] += (1.0 / sample_size);
-	}
+void calc_proportions(const uint8_t data[], std::vector<double> &p, const int sample_size) {
+    int max_index = static_cast<int>(p.size()) - 1;
+    for (int i = 0; i < sample_size; i++) {
+        int idx = std::min<int>(data[i], max_index);
+        p[idx] += 1.0 / sample_size;
+    }
 }
 
 // Calculates proportions of each value as an index
@@ -602,7 +578,7 @@ double std_dev(const vector<int> x, const double x_mean) {
 }
 
 // Quick formula for n choose 2 (which can be simplified to [n^2 - n] / 2)
-long int n_choose_2(const long int n) {
+uint64_t n_choose_2(const uint64_t n) {
 	return ((n*n) - n) / 2;
 }
 
@@ -785,7 +761,7 @@ PredictionEstimateResult predictionEstimate(long C, long N, long max_run_len, lo
     res.p_global = static_cast<double>(C) / static_cast<double>(N);
 
     if (res.p_global > 0) {
-        res.p_global_prime = std::min(
+        res.p_global_prime = min(
             1.0,
             res.p_global + ZALPHA * sqrt((res.p_global * (1.0 - res.p_global)) / (static_cast<double>(N) - 1.0))
         );
@@ -793,12 +769,12 @@ PredictionEstimateResult predictionEstimate(long C, long N, long max_run_len, lo
         res.p_global_prime = 1.0 - pow(0.01, 1.0 / static_cast<double>(N));
     }
 
-    curMax = std::max(curMax, res.p_global_prime);
+    curMax = max(curMax, res.p_global_prime);
 
     double p_local = -1.0;
     if ((curMax < 1.0) && (prediction_estimate_function(curMax, max_run_len + 1, N) > log(0.99))) {
         p_local = calc_p_local(max_run_len, N, curMax);
-        curMax = std::max(curMax, p_local);
+        curMax = max(curMax, p_local);
     }
     res.p_local = (p_local > 0.0) ? p_local : 0.0;
 

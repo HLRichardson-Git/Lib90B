@@ -95,4 +95,70 @@ struct TtupleResult : public EntropyTestResult {
     double t_tuple_res = -1.0;
 };
 
+struct CalcStatsResult {
+    double mean = 0.0;
+    double median = 0.0;
+};
+
+struct ChiSquareResult {
+    double independence_score;
+    int independence_df;
+    double independence_pvalue;
+
+    double goodness_of_fit_score;
+    int goodness_of_fit_df;
+    double goodness_of_fit_pvalue;
+
+    bool passed;
+};
+
+struct lenLrsResult {
+    bool passed = false;
+    double p_col = 0.0;       // Collision probability
+    int W = 0;                 // Length of longest repeated substring
+    double prob_x_ge_1 = 0.0;  // Pr(X >= 1)
+};
+
+struct PermutationTestResult {
+    bool passed = false;  
+    std::vector<std::array<int,3>> counts; // one entry per test, C[i][0..2]
+    std::vector<long double> initialStats; // the t[i] values
+};
+
+struct NonIidResult {
+    std::filesystem::path filename;
+    std::string sha256;
+    int word_size = 0;
+    bool is_initial_entropy = true;
+
+    std::optional<double> min_entropy;
+    std::optional<double> H_original;
+    std::optional<double> H_bitstring;
+
+    MostCommonResult most_common;
+    CollisionResult collision;
+    MarkovResult markov;
+    CompressionResult compression;
+    TtupleResult t_tuple;
+    LrsResult lrs;
+    MultiMcwResult multi_mcw;
+    LagResult lag;
+    MultiMmcResult multi_mmc;
+    Lz78yResult lz78y;
+};
+
+struct IidResult {
+    std::filesystem::path filename;
+    std::string sha256;
+    double H_original = 0.0;
+    double H_bitstring = 0.0;
+    double min_entropy = 0.0;
+
+    MostCommonResult most_common;
+    CollisionResult collision;
+    ChiSquareResult chi_square;
+    lenLrsResult lrs;
+    PermutationTestResult permutation;
+};
+
 } // namespace lib90b

@@ -8,7 +8,7 @@
 
 namespace lib90b {
 
-NonIidResult nonIidTestSuite(EntropyInputData& data);
-NonIidResult nonIidTestSuite(const std::filesystem::path& filepath);
+CalcStatsResult calcStats(const EntropyInputData& data);
+CalcStatsResult calcStats(const std::filesystem::path& filepath);
 
 } // namespace lib90b

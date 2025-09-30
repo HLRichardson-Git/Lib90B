@@ -14,6 +14,14 @@ set (NON_IID_TEST_SOURCES
     non_iid/test_non_iid.cpp
 )
 
+set (IID_TEST_SOURCES
+    iid/test_calc_stats.cpp
+    iid/test_chi_square.cpp
+    iid/test_len_lrs.cpp
+    iid/test_permutation.cpp
+    iid/test_iid.cpp
+)
+
 set (SHARED_TEST_SOURCES
     shared/test_most_common.cpp
     shared/test_lrs.cpp
@@ -21,6 +29,7 @@ set (SHARED_TEST_SOURCES
 
 add_executable (LIB_90B_TESTS
     ${NON_IID_TEST_SOURCES}
+    ${IID_TEST_SOURCES}
     ${SHARED_TEST_SOURCES}
 )
 

@@ -114,9 +114,11 @@ long int sum(const uint8_t arr[], int sample_size);
 template<size_t LENGTH>
 int sum(const std::array<int, LENGTH>& arr);
 template<typename T>
-T sum(const std::vector<T>& v);
-
-void calc_stats(const data_t *dp, double &rawmean, double &median);
+T sum(const std::vector<T>& v) {
+    T total = 0;
+    for (auto x : v) total += x;
+    return total;
+}
 
 void map_init(std::map<uint8_t, int>& m);
 void map_init(std::map<uint8_t, double>& m);
@@ -125,7 +127,7 @@ void map_init(std::map<std::pair<uint8_t, uint8_t>, int>& m);
 void calc_proportions(const uint8_t data[], std::vector<double>& p, int sample_size);
 void calc_counts(const uint8_t data[], std::vector<int>& c, int sample_size);
 double std_dev(const std::vector<int> x, double x_mean);
-long int n_choose_2(long int n);
+uint64_t n_choose_2(uint64_t n);
 
 std::vector<uint8_t> substr(const uint8_t text[], int pos, int len, int sample_size);
 std::array<uint8_t, 16> fast_substr(const uint8_t text[], int pos, int len);
