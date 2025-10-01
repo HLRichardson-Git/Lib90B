@@ -352,8 +352,7 @@ static void run_tests(const uint8_t remapped_data[], const uint8_t raw_data[],
 
 namespace lib90b {
 
-PermutationTestResult permutationTest(const EntropyInputData& input, std::optional<uint64_t> fixedSeed)
-{
+PermutationTestResult permutationTest(const EntropyInputData& input, std::optional<uint64_t> fixedSeed) {
     const auto& raw_symbols = input.symbols;
     const int sample_size = static_cast<int>(raw_symbols.size());
 
@@ -361,12 +360,12 @@ PermutationTestResult permutationTest(const EntropyInputData& input, std::option
     int alphabet_size = input.alph_size > 0 ? input.alph_size
                                             : static_cast<int>(std::unordered_set<uint8_t>(raw_symbols.begin(), raw_symbols.end()).size());
 
-    // Map symbols
+    // Map symbols to 0..N-1
     std::unordered_set<uint8_t> unique_symbols(raw_symbols.begin(), raw_symbols.end());
     std::vector<uint8_t> sorted_symbols(unique_symbols.begin(), unique_symbols.end());
     std::sort(sorted_symbols.begin(), sorted_symbols.end());
 
-    std::unordered_map<uint8_t, int> symbol_map;
+    std::unordered_map<uint8_t,int> symbol_map;
     for (size_t i = 0; i < sorted_symbols.size(); i++)
         symbol_map[sorted_symbols[i]] = static_cast<int>(i);
 
@@ -374,7 +373,7 @@ PermutationTestResult permutationTest(const EntropyInputData& input, std::option
     for (int i = 0; i < sample_size; i++)
         remapped_data[i] = static_cast<uint8_t>(symbol_map.at(raw_symbols[i]));
 
-    // Calculate initial statistics
+    // Calculate statistics
     double rawmean = std::accumulate(raw_symbols.begin(), raw_symbols.end(), 0.0) / sample_size;
     std::vector<uint8_t> sorted_remapped = remapped_data;
     std::sort(sorted_remapped.begin(), sorted_remapped.end());
@@ -384,22 +383,29 @@ PermutationTestResult permutationTest(const EntropyInputData& input, std::option
 
     uint8_t max_symbol = *std::max_element(raw_symbols.begin(), raw_symbols.end());
 
-    // Initialize RNG
+    // RNG
     uint64_t seed = fixedSeed.value_or(std::random_device{}());
     std::mt19937_64 rng(seed);
 
+    // Store results
     PermutationTestResult result{};
-    result.initialStats.resize(19, 0);
-    result.counts.resize(19, {0, 0, 0});
 
+    long double initial_stats[19] = {0};
+    int counts[19][3] = {{0}};
     bool test_status[19];
     std::fill_n(test_status, 19, true);
 
     run_tests(remapped_data.data(), raw_symbols.data(), rawmean, median,
               alphabet_size, sample_size, max_symbol,
-              result.initialStats.data(), test_status);
+              initial_stats, test_status);
 
-    // Permutation loop
+    // Copy initial stats and counts to result subtests
+    auto set_subtest = [&](PermutationSubtestResult& sub, int idx) {
+        sub.initialStat = initial_stats[idx];
+        sub.counts = {counts[idx][0], counts[idx][1], counts[idx][2]};
+        sub.passed = (counts[idx][0] + counts[idx][1] > 5) && (counts[idx][1] + counts[idx][2] > 5);
+    };
+
     std::vector<uint8_t> perm_remapped = remapped_data;
     std::vector<uint8_t> perm_raw = raw_symbols;
     int passed_count = 0;
@@ -422,12 +428,11 @@ PermutationTestResult permutationTest(const EntropyInputData& input, std::option
 
             for (int j = 0; j < 19; ++j) {
                 if (test_status[j]) {
-                    if (permuted_stats[j] > result.initialStats[j]) result.counts[j][0]++;
-                    else if (permuted_stats[j] == result.initialStats[j]) result.counts[j][1]++;
-                    else result.counts[j][2]++;
+                    if (permuted_stats[j] > initial_stats[j]) counts[j][0]++;
+                    else if (permuted_stats[j] == initial_stats[j]) counts[j][1]++;
+                    else counts[j][2]++;
 
-                    if ((result.counts[j][0] + result.counts[j][1] > 5) &&
-                        (result.counts[j][1] + result.counts[j][2] > 5))
+                    if ((counts[j][0] + counts[j][1] > 5) && (counts[j][1] + counts[j][2] > 5))
                         test_status[j] = false;
                 }
             }
@@ -436,14 +441,47 @@ PermutationTestResult permutationTest(const EntropyInputData& input, std::option
         }
     }
 
-    result.passed = true;
-    for (int i = 0; i < 19; ++i) {
-        if ((result.counts[i][0] + result.counts[i][1] <= 5) ||
-            (result.counts[i][1] + result.counts[i][2] <= 5)) {
-            result.passed = false;
-            break;
-        }
-    }
+    // Assign final results to subtests
+    set_subtest(result.excursion, 0);
+    set_subtest(result.numDirectionalRuns, 1);
+    set_subtest(result.lenDirectionalRuns, 2);
+    set_subtest(result.numIncreasesDecreases, 3);
+    set_subtest(result.numRunsMedian, 4);
+    set_subtest(result.lenRunsMedian, 5);
+    set_subtest(result.avgCollision, 6);
+    set_subtest(result.maxCollision, 7);
+    set_subtest(result.periodicity_1, 8);
+    set_subtest(result.periodicity_2, 9);
+    set_subtest(result.periodicity_8, 10);
+    set_subtest(result.periodicity_16, 11);
+    set_subtest(result.periodicity_32, 12);
+    set_subtest(result.covariance_1, 13);
+    set_subtest(result.covariance_2, 14);
+    set_subtest(result.covariance_8, 15);
+    set_subtest(result.covariance_16, 16);
+    set_subtest(result.covariance_32, 17);
+    set_subtest(result.compression, 18);
+
+    // Overall permutation passed if all subtests passed
+    result.passed = result.excursion.passed &&
+                    result.numDirectionalRuns.passed &&
+                    result.lenDirectionalRuns.passed &&
+                    result.numIncreasesDecreases.passed &&
+                    result.numRunsMedian.passed &&
+                    result.lenRunsMedian.passed &&
+                    result.avgCollision.passed &&
+                    result.maxCollision.passed &&
+                    result.periodicity_1.passed &&
+                    result.periodicity_2.passed &&
+                    result.periodicity_8.passed &&
+                    result.periodicity_16.passed &&
+                    result.periodicity_32.passed &&
+                    result.covariance_1.passed &&
+                    result.covariance_2.passed &&
+                    result.covariance_8.passed &&
+                    result.covariance_16.passed &&
+                    result.covariance_32.passed &&
+                    result.compression.passed;
 
     return result;
 }

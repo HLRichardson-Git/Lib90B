@@ -119,10 +119,54 @@ struct lenLrsResult {
     double prob_x_ge_1 = 0.0;  // Pr(X >= 1)
 };
 
+struct PermutationSubtestResult {
+    long double initialStat = 0.0; // t[i] value
+    std::array<int,3> counts{{0,0,0}}; // C[i][0..2]
+    bool passed = false;           
+};
+
+struct Excursion : public PermutationSubtestResult {};
+struct NumDirectionalRuns : public PermutationSubtestResult {};
+struct LenDirectionalRuns : public PermutationSubtestResult {};
+struct NumIncreasesDecreases : public PermutationSubtestResult {};
+struct NumRunsMedian : public PermutationSubtestResult {};
+struct LenRunsMedian : public PermutationSubtestResult {};
+struct AvgCollision : public PermutationSubtestResult {};
+struct MaxCollision : public PermutationSubtestResult {};
+struct Periodicity_1 : public PermutationSubtestResult {};
+struct Periodicity_2 : public PermutationSubtestResult {};
+struct Periodicity_8 : public PermutationSubtestResult {};
+struct Periodicity_16 : public PermutationSubtestResult {};
+struct Periodicity_32 : public PermutationSubtestResult {};
+struct Covariance_1 : public PermutationSubtestResult {};
+struct Covariance_2 : public PermutationSubtestResult {};
+struct Covariance_8 : public PermutationSubtestResult {};
+struct Covariance_16 : public PermutationSubtestResult {};
+struct Covariance_32 : public PermutationSubtestResult {};
+struct Compression : public PermutationSubtestResult {};
+
 struct PermutationTestResult {
+    Excursion excursion;
+    NumDirectionalRuns numDirectionalRuns;
+    LenDirectionalRuns lenDirectionalRuns;
+    NumIncreasesDecreases numIncreasesDecreases;
+    NumRunsMedian numRunsMedian;
+    LenRunsMedian lenRunsMedian;
+    AvgCollision avgCollision;
+    MaxCollision maxCollision;
+    Periodicity_1 periodicity_1;
+    Periodicity_2 periodicity_2;
+    Periodicity_8 periodicity_8;
+    Periodicity_16 periodicity_16;
+    Periodicity_32 periodicity_32;
+    Covariance_1 covariance_1;
+    Covariance_2 covariance_2;
+    Covariance_8 covariance_8;
+    Covariance_16 covariance_16;
+    Covariance_32 covariance_32;
+    Compression compression;
+
     bool passed = false;  
-    std::vector<std::array<int,3>> counts; // one entry per test, C[i][0..2]
-    std::vector<long double> initialStats; // the t[i] values
 };
 
 struct NonIidResult {
@@ -155,7 +199,6 @@ struct IidResult {
     double min_entropy = 0.0;
 
     MostCommonResult most_common;
-    CollisionResult collision;
     ChiSquareResult chi_square;
     lenLrsResult lrs;
     PermutationTestResult permutation;
