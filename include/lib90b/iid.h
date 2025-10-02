@@ -9,7 +9,7 @@
 
 namespace lib90b {
 
-IidResult iidTestSuite(const EntropyInputData& data);
+IidResult iidTestSuite(EntropyInputData& data);
 IidResult iidTestSuite(const std::filesystem::path& filepath);
 
 } // namespace lib90b
